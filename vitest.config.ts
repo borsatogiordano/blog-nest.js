@@ -5,7 +5,6 @@ import tsConfigPaths from 'vite-tsconfig-paths'
 export default defineConfig({
   test: {
     globals: true,
-    exclude: ["**/*.spec.ts", "node_modules", "dist"],
     root: './',
   },
   plugins: [

@@ -3,8 +3,10 @@ import { CurrentUser } from "@/infra/auth/current-user-decorator";
 import { JwtAuthGuard } from "@/infra/auth/jwt-auth.guard";
 import type { UserPayload } from "@/infra/auth/jwt.strategy";
 import { ZodValidationPipe } from "@/infra/http/pipes/zod-validation-pipe";
-import { PrismaService } from "@/infra/database/prisma/prisma.service";
 import z from 'zod';
+import { CreateQuestionUseCase } from '@/domain/forum/application/use-cases/create-question';
+import { FetchRecentQuestionsUseCase } from '@/domain/forum/application/use-cases/fetch-recent-questions';
+import { QuestionPresenter } from '../presenters/question-presenter';
 
 const createQuestionBody = z.object({
   title: z.string(),
@@ -14,12 +16,13 @@ const createQuestionBody = z.object({
 type CreateQuestionBodySchema = z.infer<typeof createQuestionBody>;
 
 
-@Controller('questions')
+@Controller('/questions')
 @UseGuards(JwtAuthGuard)
 export class QuestionsController {
 
   constructor(
-    private prisma: PrismaService
+    private createQuestionUseCase: CreateQuestionUseCase,
+    private fetchRecentQuestionsUseCase: FetchRecentQuestionsUseCase
   ) { }
 
   @Post()
@@ -30,38 +33,29 @@ export class QuestionsController {
     const { title, content } = body;
     const userId = user.sub;
 
-    await this.prisma.question.create({
-      data: {
-        title,
-        content,
-        authorId: userId,
-        slug: title.toLowerCase().normalize().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').slice(0, 200)
-      }
+    await this.createQuestionUseCase.execute({
+      title,
+      content,
+      authorId: userId,
+      attachmentsIds: [],
     })
   }
 
   @Get()
   async getQuestions(
     @CurrentUser() user: UserPayload,
-    @Query() query: { page?: string, perPage?: string }
+    @Query() query: { page?: string }
   ) {
 
-    const questions = await this.prisma.question.findMany({
-      take: query.perPage ? parseInt(query.perPage) : 20,
-      skip: query.page ? (parseInt(query.page) - 1) * (query.perPage ? parseInt(query.perPage) : 20) : 0,
-      orderBy: {
-        createdAt: 'desc',
-      }
+    const perPage = 20;
+
+    const result = await this.fetchRecentQuestionsUseCase.execute({
+      page: Number(query.page ?? '1'),
     })
-    const totalItems = await this.prisma.question.count();
-
-    const pagination = {
-      page: query.page ? parseInt(query.page) : 1,
-      perPage: query.perPage ? parseInt(query.perPage) : 20,
-      totalItems,
-      totalPages: Math.ceil(totalItems / (query.perPage ? parseInt(query.perPage) : 20)),
+    if (result.isLeft()) {
+      throw new Error('Error fetching questions');
     }
-
-    return { questions, pagination };
+    const questions = result.value.questions
+    return { questions: questions.map(QuestionPresenter.toHTTP) }
   }
 }

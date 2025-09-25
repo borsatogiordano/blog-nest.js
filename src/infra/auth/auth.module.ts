@@ -11,6 +11,7 @@ import { JwtStrategy } from "./jwt.strategy";
 	imports: [
 		PassportModule,
 		JwtModule.registerAsync({
+			global: true,
 			inject: [ConfigService],
 			useFactory: (config: ConfigService<Env, true>) => {
 				const privateKey = config.get<string>('JWT_PRIVATE_KEY', '', { infer: true });
@@ -21,9 +22,9 @@ import { JwtStrategy } from "./jwt.strategy";
 					signOptions: { algorithm: 'RS256' },
 				};
 			},
-		})
+		}
+	)
 	],
-	controllers: [AuthenticateController],
 	providers: [PrismaService, JwtStrategy],
 })
 export class AuthModule { }

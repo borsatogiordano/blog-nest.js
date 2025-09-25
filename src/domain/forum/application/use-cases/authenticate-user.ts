@@ -44,8 +44,6 @@ export class AuthenticateStudentUseCase {
 
     const accessToken = await this.encrypter.encrypt({ sub: student.id.toString() })
 
-    await this.studentsRepository.create(student)
-
     return right({ accessToken })
   }
 }

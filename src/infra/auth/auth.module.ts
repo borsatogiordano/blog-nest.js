@@ -1,21 +1,23 @@
 import { Module } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
-import { AuthenticateController } from "@/infra/http/controllers/authenticate.controller";
-import { Env } from "@/infra/env";
 import { PrismaService } from "@/infra/database/prisma/prisma.service";
 import { JwtStrategy } from "./jwt.strategy";
+import { APP_GUARD } from "@nestjs/core";
+import { JwtAuthGuard } from "./jwt-auth.guard";
+import { EnvService } from "../env/env.service";
+import { EnvModule } from "../env/env.module";
 
 @Module({
 	imports: [
 		PassportModule,
 		JwtModule.registerAsync({
+			imports: [EnvModule],
 			global: true,
-			inject: [ConfigService],
-			useFactory: (config: ConfigService<Env, true>) => {
-				const privateKey = config.get<string>('JWT_PRIVATE_KEY', '', { infer: true });
-				const publicKey = config.get<string>('JWT_PUBLIC_KEY', '', { infer: true });
+			inject: [EnvService],
+			useFactory: (env: EnvService) => {
+				const privateKey = env.get('JWT_PRIVATE_KEY');
+				const publicKey = env.get('JWT_PUBLIC_KEY');
 				return {
 					privateKey: Buffer.from(privateKey, 'base64').toString('utf-8'),
 					publicKey: Buffer.from(publicKey, 'base64').toString('utf-8'),
@@ -23,8 +25,11 @@ import { JwtStrategy } from "./jwt.strategy";
 				};
 			},
 		}
-	)
+		)
 	],
-	providers: [PrismaService, JwtStrategy],
+	providers: [PrismaService, JwtStrategy, EnvService, {
+		provide: APP_GUARD,
+		useClass: JwtAuthGuard
+	}],
 })
 export class AuthModule { }

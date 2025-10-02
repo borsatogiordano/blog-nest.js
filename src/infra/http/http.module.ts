@@ -8,6 +8,8 @@ import { RegisterStudentUseCase } from "@/domain/forum/application/use-cases/reg
 import { AuthenticateStudentUseCase } from "@/domain/forum/application/use-cases/authenticate-user";
 import { CryptographyModule } from "../cryptography/cryptography.module";
 import { AuthenticateController } from "./controllers/authenticate.controller";
+import { APP_GUARD } from "@nestjs/core";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Module({
   imports: [DatabaseModule, CryptographyModule],
@@ -16,7 +18,7 @@ import { AuthenticateController } from "./controllers/authenticate.controller";
     CreateQuestionUseCase,
     FetchRecentQuestionsUseCase,
     RegisterStudentUseCase,
-    AuthenticateStudentUseCase
+    AuthenticateStudentUseCase,
   ],
 })
 export class HttpModule {

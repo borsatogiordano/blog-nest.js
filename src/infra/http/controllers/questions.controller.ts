@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, UseGuards, ValidationPipe } from '@nestjs/common';
 import { CurrentUser } from "@/infra/auth/current-user-decorator";
 import { JwtAuthGuard } from "@/infra/auth/jwt-auth.guard";
 import type { UserPayload } from "@/infra/auth/jwt.strategy";
@@ -15,9 +15,7 @@ const createQuestionBody = z.object({
 
 type CreateQuestionBodySchema = z.infer<typeof createQuestionBody>;
 
-
 @Controller('/questions')
-@UseGuards(JwtAuthGuard)
 export class QuestionsController {
 
   constructor(
@@ -33,12 +31,16 @@ export class QuestionsController {
     const { title, content } = body;
     const userId = user.sub;
 
-    await this.createQuestionUseCase.execute({
+    const result = await this.createQuestionUseCase.execute({
       title,
       content,
       authorId: userId,
       attachmentsIds: [],
     })
+
+    if (result.isLeft()) {
+      throw new BadRequestException();
+    }
   }
 
   @Get()
@@ -52,9 +54,11 @@ export class QuestionsController {
     const result = await this.fetchRecentQuestionsUseCase.execute({
       page: Number(query.page ?? '1'),
     })
+
     if (result.isLeft()) {
-      throw new Error('Error fetching questions');
+      throw new BadRequestException();
     }
+
     const questions = result.value.questions
     return { questions: questions.map(QuestionPresenter.toHTTP) }
   }
